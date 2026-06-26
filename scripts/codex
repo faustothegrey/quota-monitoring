@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Any
+
+from ai_quota_lib import codex_report
+
+
+def print_human(data: dict[str, Any]) -> None:
+    print("Codex CLI quota")
+    print("===============")
+    print(f"Versione: {data.get('version') or 'n/a'}")
+    print(f"Login: {data.get('login_status') or 'n/a'}")
+    interactive = data.get("interactive_status") or {}
+    parsed = interactive.get("parsed") or {}
+    if interactive.get("ok"):
+        if parsed.get("account"):
+            print(f"Account: {parsed.get('account')}")
+        if parsed.get("model"):
+            print(f"Model: {parsed.get('model')}")
+        five = parsed.get("five_hour_limit") or {}
+        week = parsed.get("weekly_limit") or {}
+        print("/status interattivo:")
+        if five:
+            print(f"  finestra 5h: {five.get('used_percent')}% usata; {five.get('left_percent')}% residua; reset: {five.get('resets')}")
+        if week:
+            print(f"  finestra settimanale: {week.get('used_percent')}% usata; {week.get('left_percent')}% residua; reset: {week.get('resets')}")
+    else:
+        print(f"/status interattivo: non catturato ({interactive.get('error') or 'nessun dato parseabile'})")
+    print("Nota quota: dati Codex solo da `/status` interattivo; nessun parsing dei log.")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Report Codex CLI quota from live interactive /status only")
+    parser.add_argument("--json", action="store_true", help="print JSON instead of human-readable text")
+    args = parser.parse_args()
+    data = codex_report()
+    if args.json:
+        print(json.dumps({"codex": data}, indent=2, ensure_ascii=False, default=str))
+    else:
+        print_human(data)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

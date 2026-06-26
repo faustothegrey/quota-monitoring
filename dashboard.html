@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AI Quotas</title>
+<style>
+body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+pre { white-space: pre-wrap; margin: 0; }
+h3 { margin: 20px 0 5px; color: #0a0; }
+.ts { color: #666; font-size: 12px; }
+.error { color: #f44; }
+.section { margin: 10px 0; padding: 10px; border: 1px solid #333; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h2>AI Quotas</h2>
+<p class="ts">/tokens — Claude transcripts (every ~2 min)&nbsp;&nbsp;|&nbsp;&nbsp;/usage — All providers % (every ~10 min)</p>
+
+<div class="section">
+<h3>GET /tokens</h3>
+<pre id="tokens">loading...</pre>
+<p id="tokens-ts" class="ts"></p>
+</div>
+
+<div class="section">
+<h3>GET /usage</h3>
+<pre id="usage">loading...</pre>
+<p id="usage-ts" class="ts"></p>
+</div>
+
+<script>
+function render(id, url) {
+  const el = document.getElementById(id);
+  const ts = document.getElementById(id + '-ts');
+  fetch(url)
+    .then(r => { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.json(); })
+    .then(data => {
+      el.textContent = JSON.stringify(data, null, 2);
+      ts.textContent = 'refreshed: ' + new Date().toLocaleTimeString();
+      el.className = '';
+    })
+    .catch(e => {
+      el.textContent = 'ERROR: ' + e.message;
+      el.className = 'error';
+    });
+}
+
+render('tokens', 'http://127.0.0.1:9899/tokens');
+render('usage', 'http://127.0.0.1:9899/usage');
+setInterval(() => render('tokens', 'http://127.0.0.1:9899/tokens'), 30000);
+setInterval(() => render('usage', 'http://127.0.0.1:9899/usage'), 30000);
+</script>
+</body>
+</html>

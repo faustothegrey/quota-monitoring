@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Any
+
+from ai_quota_lib import claude_interactive_usage
+
+
+def current_usage_only() -> dict[str, Any]:
+    from ai_quota_lib import claude_usage_from_transcripts, HOME
+    from pathlib import Path
+    import os
+    
+    interactive = claude_interactive_usage(timeout=35)
+    parsed = interactive.get("parsed") or {}
+    
+    claude_home = Path(os.environ.get("CLAUDE_CONFIG_DIR", HOME / ".claude")).expanduser()
+    tokens = claude_usage_from_transcripts(claude_home, since_days=30)
+    
+    return {
+        "ok": bool(interactive.get("ok")),
+        "current_session": parsed.get("current_session"),
+        "current_week_all_models": parsed.get("current_week_all_models"),
+        "error": None if interactive.get("ok") else (interactive.get("error") or "nessun dato parseabile"),
+        "tokens_last_30_days": tokens
+    }
+
+
+def print_human(data: dict[str, Any]) -> None:
+    print("Claude Code CLI quota")
+    print("=====================")
+    if not data.get("ok"):
+        print(f"/usage interattivo: non catturato ({data.get('error') or 'nessun dato parseabile'})")
+        return
+
+    current = data.get("current_session") or {}
+    week = data.get("current_week_all_models") or {}
+    if current:
+        print(f"sessione corrente: {current.get('used_percent')}% usata; reset: {current.get('resets')}")
+    if week:
+        print(f"settimana corrente, tutti i modelli: {week.get('used_percent')}% usata; reset: {week.get('resets')}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Report only Claude Code current-session and current-week quota from interactive /usage")
+    parser.add_argument("--json", action="store_true", help="print JSON instead of human-readable text")
+    args = parser.parse_args()
+    data = current_usage_only()
+    if args.json:
+        print(json.dumps({"claude": data}, indent=2, ensure_ascii=False, default=str))
+    else:
+        print_human(data)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

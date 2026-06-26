@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Any
+
+from ai_quota_lib import antigravity_report
+
+
+def current_usage_only() -> dict[str, Any]:
+    data = antigravity_report(since_days=30, interactive_usage=True)
+    interactive = data.get("interactive_usage") or {}
+    parsed = interactive.get("parsed") or {}
+    return {
+        "ok": bool(interactive.get("ok")),
+        "version": data.get("version"),
+        "window": parsed.get("window") or "5h",
+        "current_model": parsed.get("current_model"),
+        "models": parsed.get("models") or [],
+        "lowest_left_percent": parsed.get("lowest_left_percent"),
+        "highest_used_percent": parsed.get("highest_used_percent"),
+        "error": None if interactive.get("ok") else (interactive.get("error") or "nessun dato parseabile"),
+        "note": "Antigravity CLI /usage currently exposes only the 5h model-quota window.",
+    }
+
+
+def print_human(data: dict[str, Any]) -> None:
+    print("Antigravity CLI quota")
+    print("=====================")
+    print(f"Versione: {data.get('version') or 'n/a'}")
+    if not data.get("ok"):
+        print(f"/usage interattivo: non catturato ({data.get('error') or 'nessun dato parseabile'})")
+        return
+
+    print(f"Finestra: {data.get('window') or '5h'}")
+    if data.get("current_model"):
+        print(f"Modello corrente: {data.get('current_model')}")
+    print("/usage interattivo:")
+    for model in data.get("models") or []:
+        status = f"; {model.get('status')}" if model.get("status") else ""
+        reset = f"; reset: {model.get('resets')}" if model.get("resets") else ""
+        print(f"  {model.get('label')}: {model.get('used_percent')}% usata; {model.get('left_percent')}% residua{reset}{status}")
+    if data.get("highest_used_percent") is not None:
+        print(f"Massimo consumo modelli: {data.get('highest_used_percent')}% usata")
+    print(f"Nota: {data.get('note')}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Report Antigravity CLI 5h quota from live interactive /usage")
+    parser.add_argument("--json", action="store_true", help="print JSON instead of human-readable text")
+    args = parser.parse_args()
+    data = current_usage_only()
+    if args.json:
+        print(json.dumps({"antigravity": data}, indent=2, ensure_ascii=False, default=str))
+    else:
+        print_human(data)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
