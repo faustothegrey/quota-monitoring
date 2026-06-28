@@ -18,6 +18,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, "/Users/fausto/Software/scripts-ai/quota-monitoring")
+sys.path.insert(0, "/Users/fausto/Software/scripts-ai/ai-quota-lib")
 try:
     from lib import (
         claude_usage_from_transcripts,
